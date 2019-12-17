@@ -42,6 +42,7 @@ import (
 var (
 	configPath    = kingpin.Flag("config", "Location of config.json.").Default("./config.json").String()
 	disableMailer = kingpin.Flag("disable-mailer", "Disable the mailer (for use with multi-system deployments)").Bool()
+	mode          = kingpin.Flag("mode", "Run the server in certain mode").Default("all").Enum("all", "admin", "phish")
 )
 
 func main() {
@@ -67,6 +68,7 @@ func main() {
 		log.Warnf("No contact address has been configured.")
 		log.Warnf("Please consider adding a contact_address entry in your config.json")
 	}
+	log.Infof("Starting the server in %s mode", *mode)
 	config.Version = string(version)
 
 	err = log.Setup(conf)
@@ -99,9 +101,14 @@ func main() {
 	phishConfig := conf.PhishConf
 	phishServer := controllers.NewPhishingServer(phishConfig)
 
-	go adminServer.Start()
-	go phishServer.Start()
-
+	if *mode == "admin" || *mode == "all" {
+		log.Infof("Stating the admin server, server mode is %s", *mode)
+		go adminServer.Start()
+	}
+	if *mode == "phish" || *mode == "all" {
+		log.Infof("Stating the phish server, server mode is %s", *mode)
+		go phishServer.Start()
+	}
 	// Handle graceful shutdown
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
